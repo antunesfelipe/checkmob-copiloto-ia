@@ -1118,6 +1118,37 @@ For example, specifying .*-support.* as a "channel" will cause the connector to 
     advanced_values: [],
     overrideDefaultFreq: 60 * 60 * 24,
   },
+  lark_wiki: {
+    description: "Configure Lark Wiki connector",
+    values: [
+      {
+        type: "text",
+        query: "Enter the workspace Domain:",
+        label: "workspace Domain",
+        name: "workspace_domain",
+        optional: false,
+        description: "The domain of the Lark Wiki space (e.g., https://example.feishu.cn).",
+      },
+      {
+        type: "text",
+        query: "Enter the Space  ID:",
+        label: "Space ID",
+        name: "space_id",
+        optional: true,
+        description: "The ID of the Lark Wiki space to index.",
+      },
+      {
+        type:"text",
+        query:"Enter the root page ID",
+        label:"Root Page ID",
+        name:"root_page_id",
+        optional:true,
+        description:"If specified, will only index the specified page + all of its child pages. If left blank, will index all pages the integration has been given access to."
+      }
+    ],
+    advanced_values: [],
+    overrideDefaultFreq: 60 * 60 * 24,
+  }
 };
 export function createConnectorInitialValues(
   connector: ConfigurableSources

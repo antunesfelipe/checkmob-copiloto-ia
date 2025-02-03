@@ -339,6 +339,7 @@ export enum ValidSources {
   Fireflies = "fireflies",
   Egnyte = "egnyte",
   Airtable = "airtable",
+  Lark_Wiki = "lark_wiki",
 }
 
 export const validAutoSyncSources = [
