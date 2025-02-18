@@ -1,5 +1,9 @@
+import contextlib
+import io
 import logging
+import sys
 import time
+from logging import Logger
 from types import SimpleNamespace
 
 import psycopg2
@@ -11,10 +15,12 @@ from onyx.configs.app_configs import POSTGRES_HOST
 from onyx.configs.app_configs import POSTGRES_PASSWORD
 from onyx.configs.app_configs import POSTGRES_PORT
 from onyx.configs.app_configs import POSTGRES_USER
+from onyx.configs.app_configs import REDIS_PORT
 from onyx.db.engine import build_connection_string
 from onyx.db.engine import get_all_tenant_ids
 from onyx.db.engine import get_session_context_manager
 from onyx.db.engine import get_session_with_tenant
+from onyx.db.engine import SqlEngine
 from onyx.db.engine import SYNC_DB_API
 from onyx.db.search_settings import get_current_search_settings
 from onyx.db.swap_index import check_index_swap
@@ -22,17 +28,20 @@ from onyx.document_index.document_index_utils import get_multipass_config
 from onyx.document_index.vespa.index import DOCUMENT_ID_ENDPOINT
 from onyx.document_index.vespa.index import VespaIndex
 from onyx.indexing.models import IndexingSetting
+from onyx.redis.redis_pool import redis_pool
 from onyx.setup import setup_postgres
 from onyx.setup import setup_vespa
 from onyx.utils.logger import setup_logger
-from tests.integration.common_utils.timeout import run_with_timeout
 
 logger = setup_logger()
 
 
 def _run_migrations(
-    database_url: str,
+    database: str,
     config_name: str,
+    postgres_host: str,
+    postgres_port: str,
+    redis_port: int,
     direction: str = "upgrade",
     revision: str = "head",
     schema: str = "public",
@@ -46,8 +55,27 @@ def _run_migrations(
     alembic_cfg.attributes["configure_logger"] = False
     alembic_cfg.config_ini_section = config_name
 
+    # Add environment variables to the config attributes
+    alembic_cfg.attributes["env_vars"] = {
+        "POSTGRES_HOST": postgres_host,
+        "POSTGRES_PORT": postgres_port,
+        "POSTGRES_DB": database,
+        # some migrations call redis directly, so we need to pass the port
+        "REDIS_PORT": str(redis_port),
+    }
+
     alembic_cfg.cmd_opts = SimpleNamespace()  # type: ignore
     alembic_cfg.cmd_opts.x = [f"schema={schema}"]  # type: ignore
+
+    # Build the database URL
+    database_url = build_connection_string(
+        db=database,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        host=postgres_host,
+        port=postgres_port,
+        db_api=SYNC_DB_API,
+    )
 
     # Set the SQLAlchemy URL in the Alembic configuration
     alembic_cfg.set_main_option("sqlalchemy.url", database_url)
@@ -71,6 +99,9 @@ def downgrade_postgres(
     config_name: str = "alembic",
     revision: str = "base",
     clear_data: bool = False,
+    postgres_host: str = POSTGRES_HOST,
+    postgres_port: str = POSTGRES_PORT,
+    redis_port: int = REDIS_PORT,
 ) -> None:
     """Downgrade Postgres database to base state."""
     if clear_data:
@@ -81,8 +112,8 @@ def downgrade_postgres(
             dbname=database,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
-            host=POSTGRES_HOST,
-            port=POSTGRES_PORT,
+            host=postgres_host,
+            port=postgres_port,
         )
         conn.autocommit = True  # Need autocommit for dropping schema
         cur = conn.cursor()
@@ -112,37 +143,32 @@ def downgrade_postgres(
         return
 
     # Downgrade to base
-    conn_str = build_connection_string(
-        db=database,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        host=POSTGRES_HOST,
-        port=POSTGRES_PORT,
-        db_api=SYNC_DB_API,
-    )
     _run_migrations(
-        conn_str,
-        config_name,
+        database=database,
+        config_name=config_name,
+        postgres_host=postgres_host,
+        postgres_port=postgres_port,
+        redis_port=redis_port,
         direction="downgrade",
         revision=revision,
     )
 
 
 def upgrade_postgres(
-    database: str = "postgres", config_name: str = "alembic", revision: str = "head"
+    database: str = "postgres",
+    config_name: str = "alembic",
+    revision: str = "head",
+    postgres_host: str = POSTGRES_HOST,
+    postgres_port: str = POSTGRES_PORT,
+    redis_port: int = REDIS_PORT,
 ) -> None:
     """Upgrade Postgres database to latest version."""
-    conn_str = build_connection_string(
-        db=database,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        host=POSTGRES_HOST,
-        port=POSTGRES_PORT,
-        db_api=SYNC_DB_API,
-    )
     _run_migrations(
-        conn_str,
-        config_name,
+        database=database,
+        config_name=config_name,
+        postgres_host=postgres_host,
+        postgres_port=postgres_port,
+        redis_port=redis_port,
         direction="upgrade",
         revision=revision,
     )
@@ -152,46 +178,44 @@ def reset_postgres(
     database: str = "postgres",
     config_name: str = "alembic",
     setup_onyx: bool = True,
+    postgres_host: str = POSTGRES_HOST,
+    postgres_port: str = POSTGRES_PORT,
+    redis_port: int = REDIS_PORT,
 ) -> None:
     """Reset the Postgres database."""
-    # this seems to hang due to locking issues, so run with a timeout with a few retries
-    NUM_TRIES = 10
-    TIMEOUT = 10
-    success = False
-    for _ in range(NUM_TRIES):
-        logger.info(f"Downgrading Postgres... ({_ + 1}/{NUM_TRIES})")
-        try:
-            run_with_timeout(
-                downgrade_postgres,
-                TIMEOUT,
-                kwargs={
-                    "database": database,
-                    "config_name": config_name,
-                    "revision": "base",
-                    "clear_data": True,
-                },
-            )
-            success = True
-            break
-        except TimeoutError:
-            logger.warning(
-                f"Postgres downgrade timed out, retrying... ({_ + 1}/{NUM_TRIES})"
-            )
-
-    if not success:
-        raise RuntimeError("Postgres downgrade failed after 10 timeouts.")
-
-    logger.info("Upgrading Postgres...")
-    upgrade_postgres(database=database, config_name=config_name, revision="head")
+    downgrade_postgres(
+        database=database,
+        config_name=config_name,
+        revision="base",
+        clear_data=True,
+        postgres_host=postgres_host,
+        postgres_port=postgres_port,
+        redis_port=redis_port,
+    )
+    upgrade_postgres(
+        database=database,
+        config_name=config_name,
+        revision="head",
+        postgres_host=postgres_host,
+        postgres_port=postgres_port,
+        redis_port=redis_port,
+    )
     if setup_onyx:
         logger.info("Setting up Postgres...")
         with get_session_context_manager() as db_session:
             setup_postgres(db_session)
 
 
-def reset_vespa() -> None:
-    """Wipe all data from the Vespa index."""
+def reset_vespa(
+    skip_creating_indices: bool, document_id_endpoint: str = DOCUMENT_ID_ENDPOINT
+) -> None:
+    """Wipe all data from the Vespa index.
 
+    Args:
+        skip_creating_indices: If True, the indices will not be recreated.
+            This is useful if the indices already exist and you do not want to
+            recreate them (e.g. when running parallel tests).
+    """
     with get_session_context_manager() as db_session:
         # swap to the correct default model
         check_index_swap(db_session)
@@ -200,18 +224,21 @@ def reset_vespa() -> None:
         multipass_config = get_multipass_config(search_settings)
         index_name = search_settings.index_name
 
-    success = setup_vespa(
-        document_index=VespaIndex(
-            index_name=index_name,
-            secondary_index_name=None,
-            large_chunks_enabled=multipass_config.enable_large_chunks,
-            secondary_large_chunks_enabled=None,
-        ),
-        index_setting=IndexingSetting.from_db_model(search_settings),
-        secondary_index_setting=None,
-    )
-    if not success:
-        raise RuntimeError("Could not connect to Vespa within the specified timeout.")
+    if not skip_creating_indices:
+        success = setup_vespa(
+            document_index=VespaIndex(
+                index_name=index_name,
+                secondary_index_name=None,
+                large_chunks_enabled=multipass_config.enable_large_chunks,
+                secondary_large_chunks_enabled=None,
+            ),
+            index_setting=IndexingSetting.from_db_model(search_settings),
+            secondary_index_setting=None,
+        )
+        if not success:
+            raise RuntimeError(
+                "Could not connect to Vespa within the specified timeout."
+            )
 
     for _ in range(5):
         try:
@@ -222,7 +249,7 @@ def reset_vespa() -> None:
                 if continuation:
                     params = {**params, "continuation": continuation}
                 response = requests.delete(
-                    DOCUMENT_ID_ENDPOINT.format(index_name=index_name), params=params
+                    document_id_endpoint.format(index_name=index_name), params=params
                 )
                 response.raise_for_status()
 
@@ -336,11 +363,99 @@ def reset_vespa_multitenant() -> None:
                 time.sleep(5)
 
 
-def reset_all() -> None:
+def reset_all(
+    database: str = "postgres",
+    postgres_host: str = POSTGRES_HOST,
+    postgres_port: str = POSTGRES_PORT,
+    redis_port: int = REDIS_PORT,
+    silence_logs: bool = False,
+    skip_creating_indices: bool = False,
+    document_id_endpoint: str = DOCUMENT_ID_ENDPOINT,
+) -> None:
+    if not silence_logs:
+        with contextlib.redirect_stdout(sys.stdout), contextlib.redirect_stderr(
+            sys.stderr
+        ):
+            _do_reset(
+                database,
+                postgres_host,
+                postgres_port,
+                redis_port,
+                skip_creating_indices,
+                document_id_endpoint,
+            )
+        return
+
+    # Store original logging levels
+    loggers_to_silence: list[Logger] = [
+        logging.getLogger(),  # Root logger
+        logging.getLogger("alembic"),
+        logger.logger,  # Our custom logger
+    ]
+    original_levels = [logger.level for logger in loggers_to_silence]
+
+    # Temporarily set all loggers to ERROR level
+    for log in loggers_to_silence:
+        log.setLevel(logging.ERROR)
+
+    stdout_redirect = io.StringIO()
+    stderr_redirect = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(stdout_redirect), contextlib.redirect_stderr(
+            stderr_redirect
+        ):
+            _do_reset(
+                database,
+                postgres_host,
+                postgres_port,
+                redis_port,
+                skip_creating_indices,
+                document_id_endpoint,
+            )
+    except Exception as e:
+        print(stdout_redirect.getvalue(), file=sys.stdout)
+        print(stderr_redirect.getvalue(), file=sys.stderr)
+        raise e
+    finally:
+        # Restore original logging levels
+        for logger_, level in zip(loggers_to_silence, original_levels):
+            logger_.setLevel(level)
+
+
+def _do_reset(
+    database: str,
+    postgres_host: str,
+    postgres_port: str,
+    redis_port: int,
+    skip_creating_indices: bool,
+    document_id_endpoint: str,
+) -> None:
+    """NOTE: should only be be running in one worker/thread a time."""
+
+    # force re-create the engine to allow for the same worker to reset
+    # different databases
+    with SqlEngine._lock:
+        SqlEngine._engine = SqlEngine._init_engine(
+            host=postgres_host,
+            port=postgres_port,
+            db=database,
+        )
+
+    # same with redis
+    redis_pool._init_pools(redis_port=redis_port)
+
     logger.info("Resetting Postgres...")
-    reset_postgres()
+    reset_postgres(
+        database=database,
+        postgres_host=postgres_host,
+        postgres_port=postgres_port,
+        redis_port=redis_port,
+    )
     logger.info("Resetting Vespa...")
-    reset_vespa()
+    reset_vespa(
+        skip_creating_indices=skip_creating_indices,
+        document_id_endpoint=document_id_endpoint,
+    )
 
 
 def reset_all_multitenant() -> None:
