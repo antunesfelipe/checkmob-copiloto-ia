@@ -158,9 +158,11 @@ export interface ConnectorIndexingStatus<
   last_success: string | null;
   last_status: ValidStatuses | null;
   last_finished_status: ValidStatuses | null;
+  perm_sync_completed: boolean;
   cc_pair_status: ConnectorCredentialPairStatus;
   latest_index_attempt: IndexAttemptSnapshot | null;
   docs_indexed: number;
+  is_seeded: boolean;
 }
 
 export interface OAuthPrepareAuthorizationResponse {
@@ -202,6 +204,8 @@ export interface OAuthConfluenceFinalizeResponse {
 export interface CCPairBasicInfo {
   has_successful_run: boolean;
   source: ValidSources;
+  seeded: boolean;
+  has_successful_sync_if_needs_sync: boolean;
 }
 
 export type ConnectorSummary = {
@@ -209,6 +213,8 @@ export type ConnectorSummary = {
   active: number;
   public: number;
   totalDocsIndexed: number;
+  not_ready: number;
+  complete: number;
   errors: number; // New field for error count
 };
 
