@@ -36,14 +36,22 @@ import {
 import { EditableStringFieldDisplay } from "@/components/EditableStringFieldDisplay";
 import { Button } from "@/components/ui/button";
 import EditPropertyModal from "@/components/modals/EditPropertyModal";
+import { AdvancedOptionsToggle } from "@/components/AdvancedOptionsToggle";
 
 import * as Yup from "yup";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ChevronDownIcon } from "lucide-react";
 import IndexAttemptErrorsModal from "./IndexAttemptErrorsModal";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { IndexAttemptSnapshot } from "@/lib/types";
 import { Spinner } from "@/components/Spinner";
 import { Callout } from "@/components/ui/callout";
+import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // synchronize these validations with the SQLAlchemy connector class until we have a
 // centralized schema for both frontend and backend
@@ -119,6 +127,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
   const [showIsResolvingKickoffLoader, setShowIsResolvingKickoffLoader] =
     useState(false);
   const { popup, setPopup } = usePopup();
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const latestIndexAttempt = indexAttempts?.[0];
   const isResolvingErrors =
@@ -360,7 +369,40 @@ function Main({ ccPairId }: { ccPairId: number }) {
           />
         </div>
 
-        {ccPair.is_editable_for_current_user && (
+        <div className="ml-auto flex gap-x-2">
+          {ccPair.is_editable_for_current_user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-x-1 cursor-pointer hover:opacity-80 transition-opacity">
+                  <p className="text-sm">Manage</p>
+                  <ChevronDownIcon className="h-4 w-4" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <ReIndexButton
+                    ccPairId={ccPair.id}
+                    ccPairStatus={ccPair.status}
+                    connectorId={ccPair.connector.id}
+                    credentialId={ccPair.credential.id}
+                    isDisabled={
+                      ccPair.indexing ||
+                      ccPair.status === ConnectorCredentialPairStatus.PAUSED
+                    }
+                    isIndexing={ccPair.indexing}
+                  />
+                </DropdownMenuItem>
+                {!isDeleting && (
+                  <DropdownMenuItem asChild>
+                    <ModifyStatusButtonCluster ccPair={ccPair} />
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* {ccPair.is_editable_for_current_user && (
           <div className="ml-auto flex gap-x-2">
             <ReIndexButton
               ccPairId={ccPair.id}
@@ -376,17 +418,17 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
             {!isDeleting && <ModifyStatusButtonCluster ccPair={ccPair} />}
           </div>
-        )}
+        )} */}
       </div>
-      <CCPairStatus
+      {/* <CCPairStatus
         status={ccPair.last_index_attempt_status || "not_started"}
         ccPairStatus={ccPair.status}
-      />
-      <div className="text-sm mt-1">
+      /> */}
+      {/* <div className="text-sm mt-1">
         Creator:{" "}
         <b className="text-emphasis">{ccPair.creator_email ?? "Unknown"}</b>
-      </div>
-      <div className="text-sm mt-1">
+      </div> */}
+      {/* <div className="text-sm mt-1">
         Total Documents Indexed:{" "}
         <b className="text-emphasis">{ccPair.num_docs_indexed}</b>
       </div>
@@ -395,10 +437,10 @@ function Main({ ccPairId }: { ccPairId: number }) {
           {ccPair.access_type === "public"
             ? "Public connectors are not editable by curators."
             : ccPair.access_type === "sync"
-              ? "Sync connectors are not editable by curators unless the curator is also the owner."
-              : "This connector belongs to groups where you don't have curator permissions, so it's not editable."}
+            ? "Sync connectors are not editable by curators unless the curator is also the owner."
+            : "This connector belongs to groups where you don't have curator permissions, so it's not editable."}
         </div>
-      )}
+      )} */}
 
       {ccPair.deletion_failure_message &&
         ccPair.status === ConnectorCredentialPairStatus.DELETING && (
@@ -406,21 +448,6 @@ function Main({ ccPairId }: { ccPairId: number }) {
             <div className="mt-6" />
             <DeletionErrorStatus
               deletion_failure_message={ccPair.deletion_failure_message}
-            />
-          </>
-        )}
-
-      {credentialTemplates[ccPair.connector.source] &&
-        ccPair.is_editable_for_current_user && (
-          <>
-            <Separator />
-
-            <Title className="mb-2">Credentials</Title>
-
-            <CredentialSection
-              ccPair={ccPair}
-              sourceType={ccPair.connector.source}
-              refresh={() => refresh()}
             />
           </>
         )}
@@ -435,70 +462,135 @@ function Main({ ccPairId }: { ccPairId: number }) {
       )}
 
       <Separator />
-      <ConfigDisplay
-        connectorSpecificConfig={ccPair.connector.connector_specific_config}
-        sourceType={ccPair.connector.source}
-      />
+
+      <Title className="mb-2 mt-6" size="md">
+        Indexing
+      </Title>
+
+      <Card className="px-8 py-12">
+        <div className="flex">
+          <div className="w-[200px]">
+            <div className="text-sm font-medium mb-1">Status</div>
+            <CCPairStatus
+              status={ccPair.last_index_attempt_status || "not_started"}
+              ccPairStatus={ccPair.status}
+            />
+          </div>
+
+          <div className="w-[200px]">
+            <div className="text-sm font-medium mb-1">Last Synced</div>
+            <div className="text-sm text-text-default">
+              {indexAttempts?.find((attempt) => attempt.status === "success")
+                ?.time_started
+                ? new Date(
+                    indexAttempts.find(
+                      (attempt) => attempt.status === "success"
+                    )!.time_started!
+                  ).toLocaleString()
+                : "Never"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium mb-1">Documents Indexed</div>
+            <div className="text-sm text-text-default">
+              {ccPair.num_docs_indexed.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Title size="md" className="mt-6 mb-2">
+        Configuration
+      </Title>
+
+      {credentialTemplates[ccPair.connector.source] &&
+        ccPair.is_editable_for_current_user && (
+          <div className="mt-2">
+            <CredentialSection
+              ccPair={ccPair}
+              sourceType={ccPair.connector.source}
+              refresh={() => refresh()}
+            />
+          </div>
+        )}
+
+      <div className="mt-4">
+        <ConfigDisplay
+          connectorSpecificConfig={ccPair.connector.connector_specific_config}
+          sourceType={ccPair.connector.source}
+        />
+      </div>
 
       {(pruneFreq || indexingStart || refreshFreq) && (
-        <AdvancedConfigDisplay
-          pruneFreq={pruneFreq}
-          indexingStart={indexingStart}
-          refreshFreq={refreshFreq}
-          onRefreshEdit={handleRefreshEdit}
-          onPruningEdit={handlePruningEdit}
-        />
+        <div className="mt-4">
+          <AdvancedConfigDisplay
+            pruneFreq={pruneFreq}
+            indexingStart={indexingStart}
+            refreshFreq={refreshFreq}
+            onRefreshEdit={handleRefreshEdit}
+            onPruningEdit={handlePruningEdit}
+          />
+        </div>
       )}
 
       <div className="mt-6">
         <div className="flex">
-          <Title>Indexing Attempts</Title>
-        </div>
-        {indexAttemptErrors && indexAttemptErrors.total_items > 0 && (
-          <Alert className="border-alert bg-yellow-50 dark:bg-yellow-800 my-2">
-            <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-500" />
-            <AlertTitle className="text-yellow-950 dark:text-yellow-200 font-semibold">
-              Some documents failed to index
-            </AlertTitle>
-            <AlertDescription className="text-yellow-900 dark:text-yellow-300">
-              {isResolvingErrors ? (
-                <span>
-                  <span className="text-sm text-yellow-700 dark:text-yellow-400 da animate-pulse">
-                    Resolving failures
-                  </span>
-                </span>
-              ) : (
-                <>
-                  We ran into some issues while processing some documents.{" "}
-                  <b
-                    className="text-link cursor-pointer dark:text-blue-300"
-                    onClick={() => setShowIndexAttemptErrors(true)}
-                  >
-                    View details.
-                  </b>
-                </>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-        {indexAttempts && (
-          <IndexingAttemptsTable
-            ccPair={ccPair}
-            indexAttempts={indexAttempts}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={goToPage}
+          <AdvancedOptionsToggle
+            showAdvancedOptions={showAdvancedOptions}
+            setShowAdvancedOptions={setShowAdvancedOptions}
+            title="Advanced"
           />
+        </div>
+        {showAdvancedOptions && (
+          <>
+            {indexAttemptErrors && indexAttemptErrors.total_items > 0 && (
+              <Alert className="border-alert bg-yellow-50 dark:bg-yellow-800 my-2">
+                <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-500" />
+                <AlertTitle className="text-yellow-950 dark:text-yellow-200 font-semibold">
+                  Some documents failed to index
+                </AlertTitle>
+                <AlertDescription className="text-yellow-900 dark:text-yellow-300">
+                  {isResolvingErrors ? (
+                    <span>
+                      <span className="text-sm text-yellow-700 dark:text-yellow-400 da animate-pulse">
+                        Resolving failures
+                      </span>
+                    </span>
+                  ) : (
+                    <>
+                      We ran into some issues while processing some documents.{" "}
+                      <b
+                        className="text-link cursor-pointer dark:text-blue-300"
+                        onClick={() => setShowIndexAttemptErrors(true)}
+                      >
+                        View details.
+                      </b>
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+            {indexAttempts && (
+              <IndexingAttemptsTable
+                ccPair={ccPair}
+                indexAttempts={indexAttempts}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+              />
+            )}
+          </>
         )}
       </div>
-      <Separator />
-      <div className="flex mt-4">
+      {/* <Separator /> */}
+      {/* <div className="flex mt-4">
         <div className="mx-auto">
           {ccPair.is_editable_for_current_user && (
             <DeletionButton ccPair={ccPair} refresh={refresh} />
           )}
         </div>
-      </div>
+      </div> */}
     </>
   );
 }

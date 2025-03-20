@@ -147,7 +147,7 @@ export function AdvancedConfigDisplay({
 
   return (
     <>
-      <Title className="mt-8 mb-2">Advanced Configuration</Title>
+      <div className="font-bold mb-1">General</div>
       <CardSection>
         <ul className="w-full text-sm divide-y divide-neutral-200 dark:divide-neutral-700">
           {pruneFreq && (
@@ -213,7 +213,7 @@ export function ConfigDisplay({
 
   return (
     <>
-      <Title className="mb-2">Configuration</Title>
+      <div className="font-bold mb-1">Connector</div>
       <CardSection>
         <ul className="w-full text-sm divide-y divide-background-200 dark:divide-background-700">
           {configEntries.map(([key, value]) => (

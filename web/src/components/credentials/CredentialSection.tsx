@@ -5,6 +5,7 @@ import useSWR, { mutate } from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { FaSwatchbook } from "react-icons/fa";
 import { useState } from "react";
+import { FiEdit2 } from "react-icons/fi";
 import {
   deleteCredential,
   swapCredential,
@@ -154,26 +155,49 @@ export default function CredentialSection({
   }
 
   return (
-    <div className="flex justify-start flex-col gap-y-2">
+    <div
+      className="flex
+      flex-col
+      gap-y-4
+      rounded-lg
+      bg-background"
+    >
       {popup}
 
-      <div className="flex gap-x-2">
-        <p>Current credential:</p>
-        <Text className="ml-1 italic font-bold my-auto">
+      <div
+        className="flex
+        items-center
+        gap-x-2"
+      >
+        <p
+          className="text-sm
+          font-medium
+          text-muted-foreground"
+        >
+          Current Credential:
+        </p>
+        <Text className="font-semibold">
           {ccPair.credential.name || `Credential #${ccPair.credential.id}`}
         </Text>
-      </div>
-      <div className="flex text-sm justify-start mr-auto gap-x-2">
         <button
           onClick={() => {
             setShowModifyCredential(true);
           }}
-          className="flex items-center gap-x-2 cursor-pointer bg-neutral-800 border-neutral-600 border-2 hover:bg-neutral-700 p-1.5 rounded-lg text-neutral-300"
+          className="inline-flex
+            items-center
+            justify-center
+            p-1
+            rounded-md
+            text-muted-foreground
+            hover:bg-accent
+            hover:text-accent-foreground
+            transition-colors"
         >
-          <FaSwatchbook />
-          Update Credentials
+          <FiEdit2 className="h-3 w-3" />
+          <span className="sr-only">Update Credentials</span>
         </button>
       </div>
+
       {showModifyCredential && (
         <Modal
           onOutsideClick={closeModifyCredential}
