@@ -629,6 +629,8 @@ class KGEntityType(Base):
         NullFilteredString, nullable=False, index=True, unique=True
     )
 
+    description: Mapped[str | None] = mapped_column(NullFilteredString, nullable=True)
+
     grounding: Mapped[str] = mapped_column(
         NullFilteredString, nullable=False, index=False
     )
