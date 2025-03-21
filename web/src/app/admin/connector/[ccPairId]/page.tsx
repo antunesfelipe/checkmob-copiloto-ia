@@ -52,6 +52,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FiMoreHorizontal } from "react-icons/fi";
 
 // synchronize these validations with the SQLAlchemy connector class until we have a
 // centralized schema for both frontend and backend
@@ -375,7 +376,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-x-1 cursor-pointer hover:opacity-80 transition-opacity">
                   <p className="text-sm">Manage</p>
-                  <ChevronDownIcon className="h-4 w-4" />
+                  <FiMoreHorizontal className="h-4 w-4" />
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -478,6 +479,13 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </div>
 
           <div className="w-[200px]">
+            <div className="text-sm font-medium mb-1">Documents Indexed</div>
+            <div className="text-sm text-text-default">
+              {ccPair.num_docs_indexed.toLocaleString()}
+            </div>
+          </div>
+
+          <div className="w-[200px]">
             <div className="text-sm font-medium mb-1">Last Synced</div>
             <div className="text-sm text-text-default">
               {indexAttempts?.find((attempt) => attempt.status === "success")
@@ -488,13 +496,6 @@ function Main({ ccPairId }: { ccPairId: number }) {
                     )!.time_started!
                   ).toLocaleString()
                 : "Never"}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium mb-1">Documents Indexed</div>
-            <div className="text-sm text-text-default">
-              {ccPair.num_docs_indexed.toLocaleString()}
             </div>
           </div>
         </div>

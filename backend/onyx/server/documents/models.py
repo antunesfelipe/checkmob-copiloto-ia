@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any
 from typing import Generic
 from typing import TypeVar
@@ -201,6 +202,17 @@ PaginatedType = TypeVar(
 class PaginatedReturn(BaseModel, Generic[PaginatedType]):
     items: list[PaginatedType]
     total_items: int
+
+
+class SimpleCCPairStatus(str, Enum):
+    INITIAL_SYNC = "initial_sync"
+    INDEXING = "indexing"
+    DELETING = "deleting"
+    ERROR = "error"
+
+
+class SimplifiedCCPairIndexingStatus(BaseModel):
+    status: SimpleCCPairStatus
 
 
 class CCPairFullInfo(BaseModel):
