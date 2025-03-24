@@ -31,7 +31,6 @@ import {
   CCPairFullInfo,
   ConnectorCredentialPairStatus,
   IndexAttemptError,
-  PaginatedIndexAttemptErrors,
 } from "./types";
 import { EditableStringFieldDisplay } from "@/components/EditableStringFieldDisplay";
 import { Button } from "@/components/ui/button";
@@ -53,6 +52,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FiMoreHorizontal } from "react-icons/fi";
+import { timeAgo } from "@/lib/time";
 
 // synchronize these validations with the SQLAlchemy connector class until we have a
 // centralized schema for both frontend and backend
@@ -482,22 +482,38 @@ function Main({ ccPairId }: { ccPairId: number }) {
             <div className="text-sm font-medium mb-1">Documents Indexed</div>
             <div className="text-sm text-text-default">
               {ccPair.num_docs_indexed.toLocaleString()}
+              {ccPair.status ===
+                ConnectorCredentialPairStatus.INITIAL_INDEXING &&
+                ccPair.simple_indexing_status.overall_indexing_speed && (
+                  <div className="text-xs font-medium mb-1">
+                    ({ccPair.simple_indexing_status.overall_indexing_speed} /
+                    min)
+                  </div>
+                )}
             </div>
           </div>
 
           <div className="w-[200px]">
-            <div className="text-sm font-medium mb-1">Last Synced</div>
+            <div className="text-sm font-medium mb-1">Last Indexed</div>
             <div className="text-sm text-text-default">
-              {indexAttempts?.find((attempt) => attempt.status === "success")
-                ?.time_started
-                ? new Date(
-                    indexAttempts.find(
-                      (attempt) => attempt.status === "success"
-                    )!.time_started!
-                  ).toLocaleString()
-                : "Never"}
+              {timeAgo(
+                indexAttempts?.find((attempt) => attempt.status === "success")
+                  ?.time_started
+              ) ?? "-"}
             </div>
           </div>
+
+          {ccPair.access_type === "sync" && (
+            <div className="w-[200px]">
+              <div className="text-sm font-medium mb-1">
+                Last Permission Synced
+              </div>
+              <div className="text-sm text-text-default">
+                {timeAgo(ccPair.simple_indexing_status.last_permission_sync) ??
+                  "-"}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -545,6 +561,9 @@ function Main({ ccPairId }: { ccPairId: number }) {
         </div>
         {showAdvancedOptions && (
           <>
+            <Title size="md" className="mt-6 mb-2">
+              Indexing Attempts
+            </Title>
             {indexAttemptErrors && indexAttemptErrors.total_items > 0 && (
               <Alert className="border-alert bg-yellow-50 dark:bg-yellow-800 my-2">
                 <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-500" />
@@ -584,14 +603,14 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </>
         )}
       </div>
-      {/* <Separator /> */}
-      {/* <div className="flex mt-4">
+      <Separator />
+      <div className="flex mt-4">
         <div className="mx-auto">
           {ccPair.is_editable_for_current_user && (
             <DeletionButton ccPair={ccPair} refresh={refresh} />
           )}
         </div>
-      </div> */}
+      </div>
     </>
   );
 }

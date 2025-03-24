@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timezone
 from enum import Enum
 from typing import Any
 from typing import Generic
@@ -205,14 +206,25 @@ class PaginatedReturn(BaseModel, Generic[PaginatedType]):
 
 
 class SimpleCCPairStatus(str, Enum):
-    INITIAL_SYNC = "initial_sync"
-    INDEXING = "indexing"
+    INITIAL_INDEXING = "initial_indexing"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    INVALID = "invalid"
     DELETING = "deleting"
     ERROR = "error"
 
 
 class SimplifiedCCPairIndexingStatus(BaseModel):
     status: SimpleCCPairStatus
+    last_indexed: datetime | None
+    last_pruned: datetime | None
+    last_permission_sync: datetime | None
+
+    # NOTE: should generally only be used for initial indexing speed
+    # since otherwise, it will be very, very slow (due to gaps between
+    # index attempts, no new docs, etc.)
+    overall_indexing_speed: float | None
+    latest_checkpoint_description: str | None
 
 
 class CCPairFullInfo(BaseModel):
@@ -231,6 +243,8 @@ class CCPairFullInfo(BaseModel):
     indexing: bool
     creator: UUID | None
     creator_email: str | None
+
+    simple_indexing_status: SimplifiedCCPairIndexingStatus
 
     @classmethod
     def from_models(
@@ -258,6 +272,13 @@ class CCPairFullInfo(BaseModel):
                 last_index_attempt.new_docs_indexed if last_index_attempt else 0
             )
 
+        overall_indexing_speed = num_docs_indexed / (
+            (
+                datetime.now(tz=timezone.utc) - cc_pair_model.connector.time_created
+            ).total_seconds()
+            / 60
+        )
+
         return cls(
             id=cc_pair_model.id,
             name=cc_pair_model.name,
@@ -277,9 +298,23 @@ class CCPairFullInfo(BaseModel):
             deletion_failure_message=cc_pair_model.deletion_failure_message,
             indexing=indexing,
             creator=cc_pair_model.creator_id,
-            creator_email=cc_pair_model.creator.email
-            if cc_pair_model.creator
-            else None,
+            creator_email=(
+                cc_pair_model.creator.email if cc_pair_model.creator else None
+            ),
+            simple_indexing_status=SimplifiedCCPairIndexingStatus(
+                status=SimpleCCPairStatus.ACTIVE,
+                last_indexed=last_index_attempt.time_started
+                if last_index_attempt
+                else None,
+                last_pruned=last_index_attempt.time_started
+                if last_index_attempt
+                else None,
+                last_permission_sync=last_index_attempt.time_started
+                if last_index_attempt
+                else None,
+                overall_indexing_speed=overall_indexing_speed,
+                latest_checkpoint_description=None,
+            ),
         )
 
 

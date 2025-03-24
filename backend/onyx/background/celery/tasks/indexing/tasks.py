@@ -54,6 +54,7 @@ from onyx.db.connector import mark_ccpair_with_indexing_trigger
 from onyx.db.connector_credential_pair import fetch_connector_credential_pairs
 from onyx.db.connector_credential_pair import get_connector_credential_pair_from_id
 from onyx.db.engine import get_session_with_current_tenant
+from onyx.db.enums import ConnectorCredentialPairStatus
 from onyx.db.enums import IndexingMode
 from onyx.db.enums import IndexingStatus
 from onyx.db.index_attempt import get_index_attempt
@@ -240,6 +241,13 @@ def monitor_ccpair_indexing_taskset(
     if not payload:
         return
 
+    # if the CC Pair is `SCHEDULED`, moved it to `INITIAL_INDEXING`
+    cc_pair = get_connector_credential_pair_from_id(db_session, cc_pair_id)
+    assert cc_pair is not None, f"CC Pair {cc_pair_id} not found"
+    if cc_pair.status == ConnectorCredentialPairStatus.SCHEDULED:
+        cc_pair.status = ConnectorCredentialPairStatus.INITIAL_INDEXING
+        db_session.commit()
+
     elapsed_started_str = None
     if payload.started:
         elapsed_started = datetime.now(timezone.utc) - payload.started
@@ -353,6 +361,15 @@ def monitor_ccpair_indexing_taskset(
     )
 
     redis_connector_index.reset()
+
+    # mark the CC Pair as `ACTIVE` if it's not already
+    if (
+        # it should never technically be in this state, but we'll handle it anyway
+        cc_pair.status == ConnectorCredentialPairStatus.SCHEDULED
+        or cc_pair.status == ConnectorCredentialPairStatus.INITIAL_INDEXING
+    ):
+        cc_pair.status = ConnectorCredentialPairStatus.ACTIVE
+        db_session.commit()
 
 
 @shared_task(

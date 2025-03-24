@@ -105,7 +105,19 @@ export function CCPairStatus({
 }) {
   let badge;
 
-  if (ccPairStatus == ConnectorCredentialPairStatus.DELETING) {
+  if (ccPairStatus == ConnectorCredentialPairStatus.SCHEDULED) {
+    badge = (
+      <Badge variant="not_started" icon={FiClock}>
+        Scheduled
+      </Badge>
+    );
+  } else if (ccPairStatus == ConnectorCredentialPairStatus.INITIAL_INDEXING) {
+    badge = (
+      <Badge variant="in_progress" icon={FiClock}>
+        Indexing
+      </Badge>
+    );
+  } else if (ccPairStatus == ConnectorCredentialPairStatus.DELETING) {
     badge = (
       <Badge variant="destructive" icon={FiAlertTriangle}>
         Deleting
