@@ -109,7 +109,7 @@ class KGVespaChunkUpdateRequest:
 
 
 @dataclass
-class KGUChunkpdateRequest:
+class KGUChunkUpdateRequest:
     """
     Update KG fields for a document
     """
@@ -119,6 +119,18 @@ class KGUChunkpdateRequest:
     entities: set[str] | None = None
     relationships: set[str] | None = None
     terms: set[str] | None = None
+
+
+@dataclass
+class KGUDocumentUpdateRequest:
+    """
+    Update KG fields for a document
+    """
+
+    doc_id: str
+    entities: set[str]
+    relationships: set[str]
+    terms: set[str]
 
 
 def in_memory_zip_from_file_bytes(file_contents: dict[str, bytes]) -> BinaryIO:
@@ -654,7 +666,7 @@ class VespaIndex(DocumentIndex):
         )
 
     def kg_chunk_updates(
-        self, kg_update_requests: list[KGUChunkpdateRequest], tenant_id: str
+        self, kg_update_requests: list[KGUChunkUpdateRequest], tenant_id: str
     ) -> None:
         def _get_general_entity(specific_entity: str) -> str:
             entity_type, entity_name = specific_entity.split(":")
