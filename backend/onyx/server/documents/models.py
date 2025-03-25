@@ -263,7 +263,8 @@ class CCPairFullInfo(BaseModel):
         # there is a mismatch between these two numbers which may confuse users.
         last_indexing_status = last_index_attempt.status if last_index_attempt else None
         if (
-            last_indexing_status == IndexingStatus.SUCCESS
+            # only need to do this if the last indexing attempt is still in progress
+            last_indexing_status == IndexingStatus.IN_PROGRESS
             and number_of_index_attempts == 1
             and last_index_attempt
             and last_index_attempt.new_docs_indexed

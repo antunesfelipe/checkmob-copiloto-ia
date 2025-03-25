@@ -114,7 +114,7 @@ export function CCPairStatus({
   } else if (ccPairStatus == ConnectorCredentialPairStatus.INITIAL_INDEXING) {
     badge = (
       <Badge variant="in_progress" icon={FiClock}>
-        Indexing
+        Initial Indexing
       </Badge>
     );
   } else if (ccPairStatus == ConnectorCredentialPairStatus.DELETING) {
@@ -131,7 +131,11 @@ export function CCPairStatus({
     );
   } else if (ccPairStatus == ConnectorCredentialPairStatus.INVALID) {
     badge = (
-      <Badge variant="invalid" icon={FiAlertTriangle}>
+      <Badge
+        tooltip="Connector is in an invalid state. Please update the credentials or create a new connector."
+        circle
+        variant="invalid"
+      >
         Invalid
       </Badge>
     );
@@ -144,7 +148,7 @@ export function CCPairStatus({
   } else {
     badge = (
       <Badge variant="success" icon={FiCheckCircle}>
-        Active
+        Indexed
       </Badge>
     );
   }

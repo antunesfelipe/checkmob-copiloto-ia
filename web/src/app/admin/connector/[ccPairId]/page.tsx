@@ -480,14 +480,17 @@ function Main({ ccPairId }: { ccPairId: number }) {
 
           <div className="w-[200px]">
             <div className="text-sm font-medium mb-1">Documents Indexed</div>
-            <div className="text-sm text-text-default">
+            <div className="text-sm text-text-default flex items-center gap-x-1">
               {ccPair.num_docs_indexed.toLocaleString()}
               {ccPair.status ===
                 ConnectorCredentialPairStatus.INITIAL_INDEXING &&
                 ccPair.simple_indexing_status.overall_indexing_speed && (
-                  <div className="text-xs font-medium mb-1">
-                    ({ccPair.simple_indexing_status.overall_indexing_speed} /
-                    min)
+                  <div className="ml-1 text-xs font-medium">
+                    (
+                    {ccPair.simple_indexing_status.overall_indexing_speed.toFixed(
+                      1
+                    )}{" "}
+                    docs / min)
                   </div>
                 )}
             </div>
