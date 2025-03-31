@@ -446,6 +446,11 @@ def should_index(
         print(f"Not indexing cc_pair={cc_pair.id}: refresh_freq is None")
         return False
 
+    # if in the "initial" phase, we should always try and kick-off indexing
+    # as soon as possible if there is no ongoing attempt
+    if cc_pair.status == ConnectorCredentialPairStatus.INITIAL_INDEXING:
+        return True
+
     current_db_time = get_db_current_time(db_session)
     time_since_index = current_db_time - last_index.time_updated
     if time_since_index.total_seconds() < connector.refresh_freq:

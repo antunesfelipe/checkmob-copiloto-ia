@@ -130,6 +130,7 @@ class CredentialBase(BaseModel):
 class CredentialSnapshot(CredentialBase):
     id: int
     user_id: UUID | None
+    user_email: str | None = None
     time_created: datetime
     time_updated: datetime
 
@@ -143,6 +144,7 @@ class CredentialSnapshot(CredentialBase):
                 else credential.credential_json
             ),
             user_id=credential.user_id,
+            user_email=credential.user.email if credential.user else None,
             admin_public=credential.admin_public,
             time_created=credential.time_created,
             time_updated=credential.time_updated,

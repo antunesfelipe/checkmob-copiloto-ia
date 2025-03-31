@@ -24,21 +24,29 @@ import { DeletionButton } from "./DeletionButton";
 import DeletionErrorStatus from "./DeletionErrorStatus";
 import { IndexingAttemptsTable } from "./IndexingAttemptsTable";
 import { ModifyStatusButtonCluster } from "./ModifyStatusButtonCluster";
-import { ReIndexButton } from "./ReIndexButton";
+
 import { buildCCPairInfoUrl, triggerIndexing } from "./lib";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   CCPairFullInfo,
   ConnectorCredentialPairStatus,
   IndexAttemptError,
+  statusIsNotCurrentlyActive,
 } from "./types";
 import { EditableStringFieldDisplay } from "@/components/EditableStringFieldDisplay";
 import { Button } from "@/components/ui/button";
 import EditPropertyModal from "@/components/modals/EditPropertyModal";
 import { AdvancedOptionsToggle } from "@/components/AdvancedOptionsToggle";
+import { deleteCCPair } from "@/lib/documentDeletion";
 
 import * as Yup from "yup";
-import { AlertCircle, ChevronDownIcon } from "lucide-react";
+import {
+  AlertCircle,
+  PlayIcon,
+  PauseIcon,
+  Trash2Icon,
+  RefreshCwIcon,
+} from "lucide-react";
 import IndexAttemptErrorsModal from "./IndexAttemptErrorsModal";
 import usePaginatedFetch from "@/hooks/usePaginatedFetch";
 import { IndexAttemptSnapshot } from "@/lib/types";
@@ -47,12 +55,14 @@ import { Callout } from "@/components/ui/callout";
 import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
-  DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FiMoreHorizontal } from "react-icons/fi";
+import { DropdownMenuItemWithTooltip } from "@/components/ui/dropdown-menu-with-tooltip";
+import { FiSettings } from "react-icons/fi";
 import { timeAgo } from "@/lib/time";
+import { useStatusChange } from "./ModifyStatusButtonCluster";
+import { useReIndexModal } from "./ReIndexModal";
 
 // synchronize these validations with the SQLAlchemy connector class until we have a
 // centralized schema for both frontend and backend
@@ -77,6 +87,8 @@ const PAGES_PER_BATCH = 8;
 
 function Main({ ccPairId }: { ccPairId: number }) {
   const router = useRouter();
+  const { popup, setPopup } = usePopup();
+
   const {
     data: ccPair,
     isLoading: isLoadingCCPair,
@@ -110,6 +122,20 @@ function Main({ ccPairId }: { ccPairId: number }) {
     endpoint: `/api/manage/admin/cc-pair/${ccPairId}/errors`,
   });
 
+  // Initialize hooks at top level to avoid conditional hook calls
+  const { showReIndexModal, ReIndexModal } = useReIndexModal(
+    ccPair?.connector?.id || null,
+    ccPair?.credential?.id || null,
+    ccPairId,
+    setPopup
+  );
+
+  const {
+    handleStatusChange,
+    isUpdating: isStatusUpdating,
+    ConfirmModal,
+  } = useStatusChange(ccPair || null);
+
   const indexAttemptErrors = indexAttemptErrorsPage
     ? {
         items: indexAttemptErrorsPage,
@@ -127,7 +153,6 @@ function Main({ ccPairId }: { ccPairId: number }) {
   const [showIndexAttemptErrors, setShowIndexAttemptErrors] = useState(false);
   const [showIsResolvingKickoffLoader, setShowIsResolvingKickoffLoader] =
     useState(false);
-  const { popup, setPopup } = usePopup();
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const latestIndexAttempt = indexAttempts?.[0];
@@ -143,6 +168,50 @@ function Main({ ccPairId }: { ccPairId: number }) {
   const finishConnectorDeletion = useCallback(() => {
     router.push("/admin/indexing/status?message=connector-deleted");
   }, [router]);
+
+  const handleStatusUpdate = async (
+    newStatus: ConnectorCredentialPairStatus
+  ) => {
+    setShowIsResolvingKickoffLoader(true); // Show fullscreen spinner
+    await handleStatusChange(newStatus);
+    setShowIsResolvingKickoffLoader(false); // Hide fullscreen spinner
+  };
+
+  const triggerReIndex = async (fromBeginning: boolean) => {
+    if (!ccPair) return;
+
+    setShowIsResolvingKickoffLoader(true);
+
+    try {
+      const result = await triggerIndexing(
+        fromBeginning,
+        ccPair.connector.id,
+        ccPair.credential.id,
+        ccPair.id,
+        setPopup
+      );
+
+      if (result.success) {
+        setPopup({
+          message: `${fromBeginning ? "Complete re-indexing" : "Indexing update"} started successfully`,
+          type: "success",
+        });
+      } else {
+        setPopup({
+          message: result.message || "Failed to start indexing",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to trigger indexing:", error);
+      setPopup({
+        message: "An unexpected error occurred while trying to start indexing",
+        type: "error",
+      });
+    } finally {
+      setShowIsResolvingKickoffLoader(false);
+    }
+  };
 
   useEffect(() => {
     if (isLoadingCCPair) {
@@ -302,6 +371,8 @@ function Main({ ccPairId }: { ccPairId: number }) {
     <>
       {popup}
       {showIsResolvingKickoffLoader && !isResolvingErrors && <Spinner />}
+      {ReIndexModal}
+      {ConfirmModal}
 
       {editingRefreshFrequency && (
         <EditPropertyModal
@@ -334,18 +405,7 @@ function Main({ ccPairId }: { ccPairId: number }) {
           onResolveAll={async () => {
             setShowIndexAttemptErrors(false);
             setShowIsResolvingKickoffLoader(true);
-            await triggerIndexing(
-              true,
-              ccPair.connector.id,
-              ccPair.credential.id,
-              ccPair.id,
-              setPopup
-            );
-
-            // show the loader for a max of 10 seconds
-            setTimeout(() => {
-              setShowIsResolvingKickoffLoader(false);
-            }, 10000);
+            await triggerReIndex(true);
           }}
           isResolvingErrors={isResolvingErrors}
           onPageChange={goToErrorsPage}
@@ -356,12 +416,21 @@ function Main({ ccPairId }: { ccPairId: number }) {
       <BackButton
         behaviorOverride={() => router.push("/admin/indexing/status")}
       />
-      <div className="flex items-center justify-between h-14">
+      <div
+        className="flex
+        items-center
+        justify-between
+        h-16
+        pb-2
+        border-b
+        border-neutral-200
+        dark:border-neutral-600"
+      >
         <div className="my-auto">
           <SourceIcon iconSize={32} sourceType={ccPair.connector.source} />
         </div>
 
-        <div className="ml-1 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
+        <div className="ml-3 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
           <EditableStringFieldDisplay
             value={ccPair.name}
             isEditable={ccPair.is_editable_for_current_user}
@@ -374,74 +443,110 @@ function Main({ ccPairId }: { ccPairId: number }) {
           {ccPair.is_editable_for_current_user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-x-1 cursor-pointer hover:opacity-80 transition-opacity">
-                  <p className="text-sm">Manage</p>
-                  <FiMoreHorizontal className="h-4 w-4" />
-                </div>
+                <Card
+                  className="p-2
+                  flex
+                  items-center
+                  gap-x-1
+                  cursor-pointer
+                  hover:bg-neutral-50"
+                >
+                  <FiSettings className="h-4 w-4" />
+                  <span className="text-sm ml-1">Manage</span>
+                </Card>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <ReIndexButton
-                    ccPairId={ccPair.id}
-                    ccPairStatus={ccPair.status}
-                    connectorId={ccPair.connector.id}
-                    credentialId={ccPair.credential.id}
-                    isDisabled={
-                      ccPair.indexing ||
-                      ccPair.status === ConnectorCredentialPairStatus.PAUSED
+                <DropdownMenuItemWithTooltip
+                  onClick={() => {
+                    if (
+                      !ccPair.indexing &&
+                      ccPair.status !== ConnectorCredentialPairStatus.PAUSED &&
+                      ccPair.status !== ConnectorCredentialPairStatus.INVALID
+                    ) {
+                      showReIndexModal();
                     }
-                    isIndexing={ccPair.indexing}
-                  />
-                </DropdownMenuItem>
+                  }}
+                  disabled={
+                    ccPair.indexing ||
+                    ccPair.status === ConnectorCredentialPairStatus.PAUSED ||
+                    ccPair.status === ConnectorCredentialPairStatus.INVALID
+                  }
+                  className="flex items-center gap-x-2 cursor-pointer px-3 py-2"
+                  tooltip={
+                    ccPair.indexing
+                      ? "Cannot re-index while indexing is already in progress"
+                      : ccPair.status === ConnectorCredentialPairStatus.PAUSED
+                        ? "Resume the connector before re-indexing"
+                        : ccPair.status ===
+                            ConnectorCredentialPairStatus.INVALID
+                          ? "Fix the connector configuration before re-indexing"
+                          : undefined
+                  }
+                >
+                  <RefreshCwIcon className="h-4 w-4" />
+                  <span>Re-Index</span>
+                </DropdownMenuItemWithTooltip>
                 {!isDeleting && (
-                  <DropdownMenuItem asChild>
-                    <ModifyStatusButtonCluster ccPair={ccPair} />
-                  </DropdownMenuItem>
+                  <DropdownMenuItemWithTooltip
+                    onClick={() =>
+                      handleStatusUpdate(
+                        statusIsNotCurrentlyActive(ccPair.status)
+                          ? ConnectorCredentialPairStatus.ACTIVE
+                          : ConnectorCredentialPairStatus.PAUSED
+                      )
+                    }
+                    disabled={isStatusUpdating}
+                    className="flex items-center gap-x-2 cursor-pointer px-3 py-2"
+                    tooltip={
+                      isStatusUpdating ? "Status update in progress" : undefined
+                    }
+                  >
+                    {statusIsNotCurrentlyActive(ccPair.status) ? (
+                      <PlayIcon className="h-4 w-4" />
+                    ) : (
+                      <PauseIcon className="h-4 w-4" />
+                    )}
+                    <span>
+                      {statusIsNotCurrentlyActive(ccPair.status)
+                        ? "Resume"
+                        : "Pause"}
+                    </span>
+                  </DropdownMenuItemWithTooltip>
+                )}
+                {!isDeleting && (
+                  <DropdownMenuItemWithTooltip
+                    onClick={async () => {
+                      try {
+                        await deleteCCPair(
+                          ccPair.connector.id,
+                          ccPair.credential.id,
+                          setPopup,
+                          () => mutate(buildCCPairInfoUrl(ccPair.id))
+                        );
+                        refresh();
+                      } catch (error) {
+                        console.error("Error deleting connector:", error);
+                      }
+                    }}
+                    disabled={
+                      ccPair.status === ConnectorCredentialPairStatus.ACTIVE
+                    }
+                    className="flex items-center gap-x-2 cursor-pointer px-3 py-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    tooltip={
+                      ccPair.status === ConnectorCredentialPairStatus.ACTIVE
+                        ? "Pause the connector before deleting"
+                        : undefined
+                    }
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                    <span>Delete</span>
+                  </DropdownMenuItemWithTooltip>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
-
-        {/* {ccPair.is_editable_for_current_user && (
-          <div className="ml-auto flex gap-x-2">
-            <ReIndexButton
-              ccPairId={ccPair.id}
-              ccPairStatus={ccPair.status}
-              connectorId={ccPair.connector.id}
-              credentialId={ccPair.credential.id}
-              isDisabled={
-                ccPair.indexing ||
-                ccPair.status === ConnectorCredentialPairStatus.PAUSED
-              }
-              isIndexing={ccPair.indexing}
-            />
-
-            {!isDeleting && <ModifyStatusButtonCluster ccPair={ccPair} />}
-          </div>
-        )} */}
       </div>
-      {/* <CCPairStatus
-        status={ccPair.last_index_attempt_status || "not_started"}
-        ccPairStatus={ccPair.status}
-      /> */}
-      {/* <div className="text-sm mt-1">
-        Creator:{" "}
-        <b className="text-emphasis">{ccPair.creator_email ?? "Unknown"}</b>
-      </div> */}
-      {/* <div className="text-sm mt-1">
-        Total Documents Indexed:{" "}
-        <b className="text-emphasis">{ccPair.num_docs_indexed}</b>
-      </div>
-      {!ccPair.is_editable_for_current_user && (
-        <div className="text-sm mt-2 text-text-500 italic">
-          {ccPair.access_type === "public"
-            ? "Public connectors are not editable by curators."
-            : ccPair.access_type === "sync"
-            ? "Sync connectors are not editable by curators unless the curator is also the owner."
-            : "This connector belongs to groups where you don't have curator permissions, so it's not editable."}
-        </div>
-      )} */}
 
       {ccPair.deletion_failure_message &&
         ccPair.status === ConnectorCredentialPairStatus.DELETING && (
@@ -461,8 +566,6 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </Callout>
         </div>
       )}
-
-      <Separator />
 
       <Title className="mb-2 mt-6" size="md">
         Indexing
@@ -484,7 +587,8 @@ function Main({ ccPairId }: { ccPairId: number }) {
               {ccPair.num_docs_indexed.toLocaleString()}
               {ccPair.status ===
                 ConnectorCredentialPairStatus.INITIAL_INDEXING &&
-                ccPair.simple_indexing_status.overall_indexing_speed && (
+                ccPair.simple_indexing_status.overall_indexing_speed !== null &&
+                ccPair.num_docs_indexed > 0 && (
                   <div className="ml-1 text-xs font-medium">
                     (
                     {ccPair.simple_indexing_status.overall_indexing_speed.toFixed(
@@ -520,8 +624,8 @@ function Main({ ccPairId }: { ccPairId: number }) {
         </div>
       </Card>
 
-      <Title size="md" className="mt-6 mb-2">
-        Configuration
+      <Title size="md" className="mt-10 mb-2">
+        Credential
       </Title>
 
       {credentialTemplates[ccPair.connector.source] &&
@@ -535,24 +639,16 @@ function Main({ ccPairId }: { ccPairId: number }) {
           </div>
         )}
 
-      <div className="mt-4">
+      <Title size="md" className="mt-10 mb-2">
+        Connector Configuration
+      </Title>
+
+      <Card className="px-8 py-4">
         <ConfigDisplay
           connectorSpecificConfig={ccPair.connector.connector_specific_config}
           sourceType={ccPair.connector.source}
         />
-      </div>
-
-      {(pruneFreq || indexingStart || refreshFreq) && (
-        <div className="mt-4">
-          <AdvancedConfigDisplay
-            pruneFreq={pruneFreq}
-            indexingStart={indexingStart}
-            refreshFreq={refreshFreq}
-            onRefreshEdit={handleRefreshEdit}
-            onPruningEdit={handlePruningEdit}
-          />
-        </div>
-      )}
+      </Card>
 
       <div className="mt-6">
         <div className="flex">
@@ -563,7 +659,26 @@ function Main({ ccPairId }: { ccPairId: number }) {
           />
         </div>
         {showAdvancedOptions && (
-          <>
+          <div className="pb-16">
+            {(pruneFreq || indexingStart || refreshFreq) && (
+              <>
+                <Title size="md" className="mt-3 mb-2">
+                  Advanced Configuration
+                </Title>
+                <Card className="px-8 py-4">
+                  <div>
+                    <AdvancedConfigDisplay
+                      pruneFreq={pruneFreq}
+                      indexingStart={indexingStart}
+                      refreshFreq={refreshFreq}
+                      onRefreshEdit={handleRefreshEdit}
+                      onPruningEdit={handlePruningEdit}
+                    />
+                  </div>
+                </Card>
+              </>
+            )}
+
             <Title size="md" className="mt-6 mb-2">
               Indexing Attempts
             </Title>
@@ -603,16 +718,8 @@ function Main({ ccPairId }: { ccPairId: number }) {
                 onPageChange={goToPage}
               />
             )}
-          </>
+          </div>
         )}
-      </div>
-      <Separator />
-      <div className="flex mt-4">
-        <div className="mx-auto">
-          {ccPair.is_editable_for_current_user && (
-            <DeletionButton ccPair={ccPair} refresh={refresh} />
-          )}
-        </div>
       </div>
     </>
   );
@@ -623,7 +730,7 @@ export default function Page(props: { params: Promise<{ ccPairId: string }> }) {
   const ccPairId = parseInt(params.ccPairId);
 
   return (
-    <div className="mx-auto container">
+    <div className="mx-auto w-[800px]">
       <Main ccPairId={ccPairId} />
     </div>
   );
