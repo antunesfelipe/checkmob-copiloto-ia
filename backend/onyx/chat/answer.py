@@ -10,6 +10,7 @@ from onyx.agents.agent_search.models import GraphPersistence
 from onyx.agents.agent_search.models import GraphSearchConfig
 from onyx.agents.agent_search.models import GraphTooling
 from onyx.agents.agent_search.run_graph import run_basic_graph
+from onyx.agents.agent_search.run_graph import run_dc_graph
 from onyx.agents.agent_search.run_graph import run_kb_graph
 from onyx.agents.agent_search.run_graph import run_main_graph
 from onyx.chat.models import AgentAnswerPiece
@@ -145,8 +146,10 @@ class Answer:
 
         if self.graph_config.behavior.use_agentic_search:
             run_langgraph = run_main_graph
-        elif self.graph_config.inputs.search_request.query.startswith("kb"):
+        elif self.graph_config.inputs.search_request.query.startswith("kb:"):
             run_langgraph = run_kb_graph
+        elif self.graph_config.inputs.search_request.query.startswith("dc:"):
+            run_langgraph = run_dc_graph
         else:
             run_langgraph = run_basic_graph
 

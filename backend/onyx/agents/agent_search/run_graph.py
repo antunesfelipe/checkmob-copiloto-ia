@@ -8,6 +8,8 @@ from langgraph.graph.state import CompiledStateGraph
 
 from onyx.agents.agent_search.basic.graph_builder import basic_graph_builder
 from onyx.agents.agent_search.basic.states import BasicInput
+from onyx.agents.agent_search.dc_analysis.graph_builder import dc_graph_builder
+from onyx.agents.agent_search.dc_analysis.states import MainInput as DCMainInput
 from onyx.agents.agent_search.deep_search.main.graph_builder import (
     main_graph_builder as main_graph_builder_a,
 )
@@ -84,7 +86,7 @@ def _parse_agent_event(
 def manage_sync_streaming(
     compiled_graph: CompiledStateGraph,
     config: GraphConfig,
-    graph_input: BasicInput | MainInput | KBMainInput,
+    graph_input: BasicInput | MainInput | KBMainInput | DCMainInput,
 ) -> Iterable[StreamEvent]:
     message_id = config.persistence.message_id if config.persistence else None
     for event in compiled_graph.stream(
@@ -98,7 +100,7 @@ def manage_sync_streaming(
 def run_graph(
     compiled_graph: CompiledStateGraph,
     config: GraphConfig,
-    input: BasicInput | MainInput | KBMainInput,
+    input: BasicInput | MainInput | KBMainInput | DCMainInput,
 ) -> AnswerStream:
     config.behavior.perform_initial_search_decomposition = (
         INITIAL_SEARCH_DECOMPOSITION_ENABLED
@@ -154,6 +156,16 @@ def run_kb_graph(
     graph = kb_graph_builder()
     compiled_graph = graph.compile()
     input = KBMainInput(log_messages=[])
+    config.inputs.search_request.query = config.inputs.search_request.query[3:].strip()
+    return run_graph(compiled_graph, config, input)
+
+
+def run_dc_graph(
+    config: GraphConfig,
+) -> AnswerStream:
+    graph = dc_graph_builder()
+    compiled_graph = graph.compile()
+    input = DCMainInput(log_messages=[])
     config.inputs.search_request.query = config.inputs.search_request.query[3:].strip()
     return run_graph(compiled_graph, config, input)
 
