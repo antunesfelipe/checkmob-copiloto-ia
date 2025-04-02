@@ -703,7 +703,11 @@ class Connector(Base):
     )
     documents_by_connector: Mapped[
         list["DocumentByConnectorCredentialPair"]
-    ] = relationship("DocumentByConnectorCredentialPair", back_populates="connector")
+    ] = relationship(
+        "DocumentByConnectorCredentialPair",
+        back_populates="connector",
+        cascade="all, delete-orphan",
+    )
 
     # synchronize this validation logic with RefreshFrequencySchema etc on front end
     # until we have a centralized validation schema
@@ -757,7 +761,11 @@ class Credential(Base):
     )
     documents_by_credential: Mapped[
         list["DocumentByConnectorCredentialPair"]
-    ] = relationship("DocumentByConnectorCredentialPair", back_populates="credential")
+    ] = relationship(
+        "DocumentByConnectorCredentialPair",
+        back_populates="credential",
+        cascade="all, delete-orphan",
+    )
 
     user: Mapped[User | None] = relationship("User", back_populates="credentials")
 
