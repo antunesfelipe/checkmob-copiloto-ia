@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CCPairStatus, IndexAttemptStatus } from "@/components/Status";
+import { CCPairStatus } from "@/components/Status";
+import { AttemptStatus } from "@/components/Status";
 import { timeAgo } from "@/lib/time";
 import {
   ConnectorIndexingStatus,
@@ -186,6 +187,12 @@ border border-border dark:border-neutral-700
         </TableCell>
       )}
       <TableCell>{ccPairsIndexingStatus.docs_indexed}</TableCell>
+      <TableCell>
+        <AttemptStatus
+          status={ccPairsIndexingStatus.last_finished_status || null}
+          errorMsg={ccPairsIndexingStatus?.latest_index_attempt?.error_msg}
+        />
+      </TableCell>
       <TableCell>
         {isEditable && (
           <TooltipProvider>
@@ -452,13 +459,10 @@ export function CCPairIndexingStatusTable({
     );
   };
   const toggleSources = () => {
-    const connectors = sortedSources.reduce(
-      (acc, source) => {
-        acc[source] = shouldExpand;
-        return acc;
-      },
-      {} as Record<ValidSources, boolean>
-    );
+    const connectors = sortedSources.reduce((acc, source) => {
+      acc[source] = shouldExpand;
+      return acc;
+    }, {} as Record<ValidSources, boolean>);
 
     setConnectorsToggled(connectors);
     Cookies.set(TOGGLED_CONNECTORS_COOKIE_NAME, JSON.stringify(connectors));
