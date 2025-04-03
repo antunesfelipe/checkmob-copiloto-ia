@@ -27,6 +27,8 @@ from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
 
+logger = setup_logger()
+
 
 def build_sub_question_answer_prompt(
     question: str,
@@ -180,3 +182,35 @@ def binary_string_test_after_answer_separator(
     relevant_text = text.split(f"{separator}")[-1]
 
     return binary_string_test(relevant_text, positive_value)
+
+
+def build_dc_seatch_prompt(
+    question: str,
+    original_question: str,
+    docs: list[InferenceSection],
+    persona_specification: str,
+    config: LLMConfig,
+) -> list[SystemMessage | HumanMessage | AIMessage | ToolMessage]:
+    system_message = SystemMessage(
+        content=persona_specification,
+    )
+
+    date_str = build_date_time_string()
+
+    docs_str = format_docs(docs)
+
+    docs_str = trim_prompt_piece(
+        config,
+        docs_str,
+        SUB_QUESTION_RAG_PROMPT + question + original_question + date_str,
+    )
+    human_message = HumanMessage(
+        content=SUB_QUESTION_RAG_PROMPT.format(
+            question=question,
+            original_question=original_question,
+            context=docs_str,
+            date_prompt=date_str,
+        )
+    )
+
+    return [system_message, human_message]

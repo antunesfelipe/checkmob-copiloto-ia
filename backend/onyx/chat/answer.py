@@ -148,7 +148,11 @@ class Answer:
             run_langgraph = run_main_graph
         elif self.graph_config.inputs.search_request.query.startswith("kb:"):
             run_langgraph = run_kb_graph
-        elif self.graph_config.inputs.search_request.query.startswith("dc:"):
+        elif self.graph_config.inputs.search_request.query.startswith(
+            "dc:"
+        ) or self.graph_config.inputs.search_request.persona.name.startswith(
+            "DivCon Agent"
+        ):
             run_langgraph = run_dc_graph
         else:
             run_langgraph = run_basic_graph

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 from pydantic import model_validator
 from sqlalchemy.orm import Session
 
+from onyx.configs.constants import DocumentSource
 from onyx.context.search.enums import SearchType
 from onyx.context.search.models import IndexFilters
 from onyx.context.search.models import InferenceSection
@@ -72,6 +74,8 @@ class SearchToolOverrideKwargs(BaseModel):
     precomputed_keywords: list[str] | None = None
     user_file_ids: list[int] | None = None
     user_folder_ids: list[int] | None = None
+    document_sources: list[DocumentSource] | None = None
+    time_cutoff: datetime | None = None
     ordering_only: bool | None = (
         None  # Flag for fast path when search is only needed for ordering
     )
