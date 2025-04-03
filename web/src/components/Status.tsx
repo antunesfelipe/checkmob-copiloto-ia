@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export function IndexAttemptStatus({
+export function AttemptStatus({
   status,
   errorMsg,
 }: {
