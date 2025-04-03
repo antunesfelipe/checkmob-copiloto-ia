@@ -166,7 +166,7 @@ def run_dc_graph(
     graph = dc_graph_builder()
     compiled_graph = graph.compile()
     input = DCMainInput(log_messages=[])
-    config.inputs.search_request.query = config.inputs.search_request.query[3:].strip()
+    config.inputs.search_request.query = config.inputs.search_request.query.strip()
     return run_graph(compiled_graph, config, input)
 
 

@@ -29,7 +29,7 @@ def research_object_source(
     datetime.now()
 
     graph_config = cast(GraphConfig, config["metadata"]["config"])
-    question = graph_config.inputs.search_request.query
+    graph_config.inputs.search_request.query
     search_tool = graph_config.tooling.search_tool
 
     object, document_source = state.object_source_combination
@@ -38,11 +38,13 @@ def research_object_source(
         raise ValueError("search tool and persona must be provided for agentic search")
 
     try:
-        agent_2_instructions = (
-            graph_config.inputs.search_request.persona.prompts[0]
-            .system_prompt.split("Agent Step 1:")[1]
-            .split("Agent Step 3:")[0]
-        )
+        instructions = graph_config.inputs.search_request.persona.prompts[
+            0
+        ].system_prompt
+
+        agent_2_instructions = instructions.split("Agent Step 2:")[1].split(
+            "Agent Step 3:"
+        )[0]
         agent_2_task = agent_2_instructions.split("Task:")[1].split(
             "Independent Sources:"
         )[0]
@@ -57,9 +59,9 @@ def research_object_source(
     # Retrieve chunks for objects
 
     if document_source:
-        retrieved_docs = research(question, search_tool, [document_source])
+        retrieved_docs = research(object, search_tool, [document_source])
     else:
-        retrieved_docs = research(question, search_tool)
+        retrieved_docs = research(object, search_tool)
 
     # Generate document text
 

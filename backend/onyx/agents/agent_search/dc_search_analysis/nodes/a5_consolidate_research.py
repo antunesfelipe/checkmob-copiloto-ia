@@ -10,7 +10,8 @@ from onyx.agents.agent_search.dc_search_analysis.states import ResearchUpdate
 from onyx.agents.agent_search.models import GraphConfig
 from onyx.agents.agent_search.shared_graph_utils.utils import write_custom_event
 from onyx.chat.models import AgentAnswerPiece
-from onyx.prompts.kg_prompts import DC_FORMATTING_PROMPT
+from onyx.prompts.kg_prompts import DC_FORMATTING_NO_BASE_DATA_PROMPT
+from onyx.prompts.kg_prompts import DC_FORMATTING_WITH_BASE_DATA_PROMPT
 from onyx.utils.logger import setup_logger
 from onyx.utils.threadpool_concurrency import run_with_timeout
 
@@ -44,9 +45,16 @@ def consolidate_research(
     if search_tool is None or graph_config.inputs.search_request.persona is None:
         raise ValueError("search tool and persona must be provided for agentic search")
 
-    agent_5_instructions = graph_config.inputs.search_request.persona.prompts[
-        0
-    ].system_prompt.split("Agent Step 5:")[1]
+    # Populate prompt
+    instructions = graph_config.inputs.search_request.persona.prompts[0].system_prompt
+
+    agent_5_instructions = instructions.split("Agent Step 5:")[1].split("Agent End")[0]
+
+    if "|Start Data|" and "|End Data|" in instructions:
+        agent_5_base_data = instructions.split("|Start Data|")[1].split("|End Data|")[0]
+    else:
+        agent_5_base_data = None
+
     agent_5_task = agent_5_instructions.split("Task:")[1].split("Independent Sources:")[
         0
     ]
@@ -66,9 +74,14 @@ def consolidate_research(
 
     # Create a prompt for the object consolidation
 
-    dc_formatting_prompt = DC_FORMATTING_PROMPT.format(
-        text=research_results, format=agent_5_output_objective
-    )
+    if agent_5_base_data is None:
+        dc_formatting_prompt = DC_FORMATTING_NO_BASE_DATA_PROMPT.format(
+            text=research_results, format=agent_5_output_objective
+        )
+    else:
+        dc_formatting_prompt = DC_FORMATTING_WITH_BASE_DATA_PROMPT.format(
+            text=research_results, format=agent_5_output_objective
+        )
 
     # Run LLM
 

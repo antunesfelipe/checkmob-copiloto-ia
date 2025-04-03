@@ -32,11 +32,11 @@ def consolidate_object_research(
     if search_tool is None or graph_config.inputs.search_request.persona is None:
         raise ValueError("search tool and persona must be provided for agentic search")
 
-    agent_4_instructions = (
-        graph_config.inputs.search_request.persona.prompts[0]
-        .system_prompt.split("Agent Step 4:")[1]
-        .split("Agent Step 5:")[0]
-    )
+    instructions = graph_config.inputs.search_request.persona.prompts[0].system_prompt
+
+    agent_4_instructions = instructions.split("Agent Step 4:")[1].split(
+        "Agent Step 5:"
+    )[0]
     # agent_4_task = agent_4_instructions.split("Task:")[1].split("Independent Sources:")[
     #    0
     # ]
