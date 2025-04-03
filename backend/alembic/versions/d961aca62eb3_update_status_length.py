@@ -1,7 +1,7 @@
 """Update status length
 
 Revision ID: d961aca62eb3
-Revises: 3781a5eb12cb
+Revises: f7505c5b0284
 Create Date: 2025-03-23 16:10:05.683965
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "d961aca62eb3"
-down_revision = "3781a5eb12cb"
+down_revision = "f7505c5b0284"
 branch_labels = None
 depends_on = None
 

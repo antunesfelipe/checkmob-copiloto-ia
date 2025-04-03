@@ -500,6 +500,7 @@ export function CCPairIndexingStatusTable({
                 name: "Sample Credential",
                 source: ValidSources.File,
                 user_id: "1",
+                user_email: "sample@example.com",
                 time_created: "2023-07-01T12:00:00Z",
                 time_updated: "2023-07-01T12:00:00Z",
                 credential_json: {},
