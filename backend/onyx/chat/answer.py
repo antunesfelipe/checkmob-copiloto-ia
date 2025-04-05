@@ -146,12 +146,18 @@ class Answer:
 
         if self.graph_config.behavior.use_agentic_search:
             run_langgraph = run_main_graph
-        elif self.graph_config.inputs.search_request.query.startswith("kb:"):
-            run_langgraph = run_kb_graph
-        elif self.graph_config.inputs.search_request.persona.name.startswith(
-            "DivCon Agent"
-        ):
-            run_langgraph = run_dc_graph
+        elif self.graph_config.inputs.search_request.persona:
+            if self.graph_config.inputs.search_request.persona.name.startswith(
+                "DivCon Agent"
+            ):
+                run_langgraph = run_dc_graph
+            elif self.graph_config.inputs.search_request.persona.name.startswith(
+                "KB Dev"
+            ):
+                run_langgraph = run_kb_graph
+            else:
+                run_langgraph = run_basic_graph
+
         else:
             run_langgraph = run_basic_graph
 
