@@ -79,6 +79,9 @@ class SearchToolOverrideKwargs(BaseModel):
     ordering_only: bool | None = (
         None  # Flag for fast path when search is only needed for ordering
     )
+    kg_entities: list[str] | None = None
+    kg_relationships: list[str] | None = None
+    kg_terms: list[str] | None = None
 
     class Config:
         arbitrary_types_allowed = True

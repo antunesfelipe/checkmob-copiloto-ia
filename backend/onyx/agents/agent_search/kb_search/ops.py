@@ -17,13 +17,11 @@ def research(
     search_tool: SearchTool,
     document_sources: list[DocumentSource] | None = None,
     time_cutoff: datetime | None = None,
-    kg_entities: list[str] | None = None,
-    kg_relationships: list[str] | None = None,
-    kg_terms: list[str] | None = None,
 ) -> list[LlmDoc]:
     # new db session to avoid concurrency issues
 
     callback_container: list[list[InferenceSection]] = []
+    retrieved_docs: list[LlmDoc] = []
 
     with get_session_with_current_tenant() as db_session:
         for tool_response in search_tool.run(
@@ -35,9 +33,6 @@ def research(
                 skip_query_analysis=True,
                 document_sources=document_sources,
                 time_cutoff=time_cutoff,
-                kg_entities=kg_entities,
-                kg_relationships=kg_relationships,
-                kg_terms=kg_terms,
             ),
         ):
             # get retrieved docs to send to the rest of the graph

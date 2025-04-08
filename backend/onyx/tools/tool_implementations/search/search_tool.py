@@ -304,6 +304,9 @@ class SearchTool(Tool[SearchToolOverrideKwargs]):
             ordering_only = use_alt_not_None(override_kwargs.ordering_only, False)
             document_sources = override_kwargs.document_sources
             time_cutoff = override_kwargs.time_cutoff
+            kg_entities = override_kwargs.kg_entities
+            kg_relationships = override_kwargs.kg_relationships
+            kg_terms = override_kwargs.kg_terms
 
         # Fast path for ordering-only search
         if ordering_only:
@@ -349,6 +352,12 @@ class SearchTool(Tool[SearchToolOverrideKwargs]):
             # Handle time cutoff
             if time_cutoff:
                 retrieval_options.filters.time_cutoff = time_cutoff
+            if kg_entities:
+                retrieval_options.filters.kg_entities = kg_entities
+            if kg_relationships:
+                retrieval_options.filters.kg_relationships = kg_relationships
+            if kg_terms:
+                retrieval_options.filters.kg_terms = kg_terms
 
         search_pipeline = SearchPipeline(
             search_request=SearchRequest(
