@@ -352,12 +352,16 @@ class SearchTool(Tool[SearchToolOverrideKwargs]):
             # Handle time cutoff
             if time_cutoff:
                 retrieval_options.filters.time_cutoff = time_cutoff
-            if kg_entities:
-                retrieval_options.filters.kg_entities = kg_entities
-            if kg_relationships:
-                retrieval_options.filters.kg_relationships = kg_relationships
-            if kg_terms:
-                retrieval_options.filters.kg_terms = kg_terms
+
+        # Initialize retrieval options and filters with all provided values
+        retrieval_options = retrieval_options or RetrievalDetails()
+        retrieval_options.filters = retrieval_options.filters or BaseFilters()
+        if kg_entities:
+            retrieval_options.filters.kg_entities = kg_entities
+        if kg_relationships:
+            retrieval_options.filters.kg_relationships = kg_relationships
+        if kg_terms:
+            retrieval_options.filters.kg_terms = kg_terms
 
         search_pipeline = SearchPipeline(
             search_request=SearchRequest(
