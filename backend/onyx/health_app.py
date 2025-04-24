@@ -1,7 +1,7 @@
 # backend/health_app.py
 from fastapi import FastAPI
 import threading
-from backend.onyx.onyxbot.slack.listener import SlackbotHandler
+from onyx.onyxbot.slack.listener import SlackbotHandler
 
 app = FastAPI()
 
