@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-@app.api_route("/", methods=["GET", "HEAD"])
+@app.get("/")
+@app.head("/")
 def read_root():
     return {"mensagem": "Copiloto Checkmob IA rodando com sucesso 🚀"}
