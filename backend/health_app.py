@@ -1,19 +1,24 @@
-from fastapi import FastAPI, Request
+# from fastapi import FastAPI
+
+# app = FastAPI()
+
+# @app.get("/")
+# @app.head("/")
+# def read_root():
+#     return {"mensagem": "Copiloto Checkmob IA rodando com sucesso 🚀"}
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI()
 
+class Pergunta(BaseModel):
+    pergunta: str
+
 @app.get("/")
-@app.head("/")
-def read_root():
+def home():
     return {"mensagem": "Copiloto Checkmob IA rodando com sucesso 🚀"}
 
-class Pergunta(BaseModel):
-    texto: str
-
 @app.post("/pergunta")
-async def responder(pergunta: Pergunta):
-    texto = pergunta.texto
-    # Aqui você pode conectar com OpenAI, LlamaIndex, etc.
-    resposta = f"Recebi sua pergunta: '{texto}'. Em breve responderei com base nos documentos. 🤖"
-    return {"resposta": resposta}
+def responder(pergunta: Pergunta):
+    return {"resposta": f"Você perguntou: {pergunta.pergunta}"}
+
