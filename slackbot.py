@@ -1,28 +1,26 @@
-import os
-import requests
-from slack_bolt import App
+from fastapi import FastAPI
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from dotenv import load_dotenv
+from slack_bolt import App
+import os
+import threading
 
-load_dotenv()
+# Slack app
+slack_app = App(token=os.environ["SLACK_BOT_TOKEN"])
 
-SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
-SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
-API_BACKEND_URL = os.getenv("API_BACKEND_URL")
+@slack_app.event("app_mention")
+def mention_handler(event, say):
+    say("Oi! Copiloto IA está online! 🚀")
 
-app = App(token=SLACK_BOT_TOKEN)
+def start_socket_mode():
+    handler = SocketModeHandler(slack_app, os.environ["SLACK_APP_TOKEN"])
+    handler.start()
 
-@app.event("app_mention")
-def responder(body, say):
-    texto = body["event"]["text"]
-    usuario = body["event"]["user"]
+# FastAPI app só para manter a porta 10000 aberta
+api = FastAPI()
 
-    try:
-        resposta = requests.post(API_BACKEND_URL, json={"texto": texto}).json()
-        mensagem = resposta.get("resposta", "Desculpe, não consegui entender.")
-        say(f"<@{usuario}> {mensagem}")
-    except Exception as e:
-        say(f"Erro ao consultar Copiloto IA: {e}")
+@api.get("/")
+def root():
+    return {"status": "Slackbot rodando com sucesso"}
 
-if __name__ == "__main__":
-    SocketModeHandler(app, SLACK_APP_TOKEN).start()
+# Inicia o bot em paralelo
+threading.Thread(target=start_socket_mode).start()
