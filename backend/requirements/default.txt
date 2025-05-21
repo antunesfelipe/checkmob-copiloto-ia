@@ -99,3 +99,8 @@ sentry-sdk==2.14.0
 prometheus_client==0.21.0
 fastapi-limiter==0.1.6
 prometheus_fastapi_instrumentator==7.1.0
+
+slack_bolt
+requests
+python-dotenv
+
