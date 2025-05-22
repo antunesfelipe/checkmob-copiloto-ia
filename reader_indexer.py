@@ -1,5 +1,7 @@
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, load_index_from_storage
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings import HuggingFaceEmbedding
+
+# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 import os
 
 def carregar_ou_criar_indice(pasta_docs="docs", pasta_indice="index_storage"):
