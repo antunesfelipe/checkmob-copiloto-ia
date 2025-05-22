@@ -13,5 +13,13 @@ def carregar_ou_criar_indice(pasta_docs="docs", pasta_indice="index_storage"):
             print(f"[ERRO] Falha ao carregar índice existente: {e}")
             return None
 
-    print("[INFO] Nenhum índice encontrado. Rode localmente para gerar o índice.")
-    return None
+    print("[INFO] Nenhum índice encontrado. Criando novo índice...")
+    try:
+        documentos = SimpleDirectoryReader(pasta_docs).load_data()
+        indice = VectorStoreIndex.from_documents(documentos, embed_model=embed_model)
+        indice.storage_context.persist(persist_dir=pasta_indice)
+        print("[INFO] Índice criado e salvo com sucesso.")
+        return indice
+    except Exception as e:
+        print(f"[ERRO] Falha ao criar índice: {e}")
+        return None
