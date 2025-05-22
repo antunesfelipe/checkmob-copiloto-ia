@@ -8,4 +8,6 @@ llama-index
 unstructured
 python-docx
 pdfplumber
+docx2txt
+
 
