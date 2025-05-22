@@ -7,7 +7,7 @@ uvicorn
 fastapi
 
 # LlamaIndex e processamento de documentos
-llama-index
+llama-index[huggingface]
 unstructured
 python-docx
 pdfplumber
