@@ -5,6 +5,7 @@ import os
 def carregar_ou_criar_indice(pasta_docs="docs", pasta_indice="index_storage"):
     embed_model = HuggingFaceEmbedding(model_name="intfloat/e5-small-v2")
 
+    # Tenta carregar o índice salvo
     if os.path.exists(pasta_indice):
         try:
             storage = StorageContext.from_defaults(persist_dir=pasta_indice)
@@ -14,5 +15,10 @@ def carregar_ou_criar_indice(pasta_docs="docs", pasta_indice="index_storage"):
             print(f"[ERRO] Falha ao carregar índice existente: {e}")
             return None
 
-    print("[ERRO] Nenhum índice encontrado. Gere o índice localmente e envie via Git.")
+    # Se não encontrar índice, não tenta criar no Render
+    if os.environ.get("RENDER") == "true":
+        print("[ERRO] Índice não encontrado e ambiente é o Render. Gere localmente e envie via Git.")
+        return None
+
+    print("[ERRO] Índice não encontrado. Gere localmente com 'gerar_indice.py'.")
     return None
