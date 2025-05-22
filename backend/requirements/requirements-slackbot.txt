@@ -4,3 +4,8 @@ python-dotenv==1.0.0
 requests==2.32.2
 uvicorn
 fastapi
+llama-index
+unstructured
+python-docx
+pdfplumber
+
