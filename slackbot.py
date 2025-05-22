@@ -88,6 +88,8 @@
 import os
 import requests
 from urllib.parse import quote
+from reader_indexer import carregar_ou_criar_indice
+
 
 # Função para baixar documentos do GitHub
 def baixar_documentos():
@@ -124,6 +126,10 @@ import threading
 
 # Inicializa o app do Slack
 slack_app = App(token=os.environ["SLACK_BOT_TOKEN"])
+
+# Carrega o índice dos documentos
+indice = carregar_ou_criar_indice()
+chat_engine = indice.as_chat_engine()
 
 # Evento: menção no canal público
 @slack_app.event("app_mention")
