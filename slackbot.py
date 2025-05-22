@@ -131,16 +131,32 @@ slack_app = App(token=os.environ["SLACK_BOT_TOKEN"])
 indice = carregar_ou_criar_indice()
 chat_engine = indice.as_chat_engine()
 
+# # Evento: menção no canal público
+# @slack_app.event("app_mention")
+# def handle_mention(event, say):
+#     say("Oi! Copiloto IA está online! 🚀")
+
+# # Evento: mensagem privada (direct message)
+# @slack_app.event("message")
+# def handle_dm(event, say):
+#     if event.get("channel_type") == "im":
+#         say("Recebi sua mensagem privada! 🤖")
+
 # Evento: menção no canal público
 @slack_app.event("app_mention")
 def handle_mention(event, say):
-    say("Oi! Copiloto IA está online! 🚀")
+    texto = event.get("text", "")
+    resposta = chat_engine.chat(texto).response
+    say(resposta)
 
 # Evento: mensagem privada (direct message)
 @slack_app.event("message")
 def handle_dm(event, say):
     if event.get("channel_type") == "im":
-        say("Recebi sua mensagem privada! 🤖")
+        texto = event.get("text", "")
+        resposta = chat_engine.chat(texto).response
+        say(resposta)
+
 
 # Inicia o bot Slack em thread separada
 def start_socket():
