@@ -24,10 +24,102 @@
 # @app.get("/")
 # def status():
 #     return {"status": "Slackbot rodando com sucesso"}
+# import os
+# import requests
+# from urllib.parse import quote
+
+# def baixar_documentos():
+#     base_url = "https://raw.githubusercontent.com/antunesfelipe/checkmob-copiloto-ia/main/documentos/"
+#     arquivos = [
+#         "A.5.1.1 Política de segurança da informação (vigente - 6_8_24).docx",
+#         "CP07 - Information Classification Policy.docx",
+#         "Política de Segurança de Servidores.docx"
+#     ]
+    
+#     os.makedirs("docs", exist_ok=True)
+    
+#     for nome in arquivos:
+#         url = base_url + quote(nome)
+#         caminho_local = os.path.join("docs", nome.replace(" ", "_"))
+        
+#         print(f"Baixando {url}...")
+#         response = requests.get(url)
+#         if response.status_code == 200:
+#             with open(caminho_local, "wb") as f:
+#                 f.write(response.content)
+#             print(f"✅ Baixado: {caminho_local}")
+#         else:
+#             print(f"❌ Erro ao baixar: {url}")
+
+
+# from fastapi import FastAPI
+# from slack_bolt.adapter.socket_mode import SocketModeHandler
+# from slack_bolt import App
+# import os
+# import threading
+
+# # Inicializa o app do Slack
+# slack_app = App(token=os.environ["SLACK_BOT_TOKEN"])
+
+# # Evento: menção no canal público
+# @slack_app.event("app_mention")
+# def handle_mention(event, say):
+#     say("Oi! Copiloto IA está online! 🚀")
+
+# # Evento: mensagem privada (direct message)
+# @slack_app.event("message")
+# def handle_dm(event, say):
+#     if event.get("channel_type") == "im":
+#         say("Recebi sua mensagem privada! 🤖")
+
+# # Inicia o bot Slack em thread separada
+# def start_socket():
+#     handler = SocketModeHandler(slack_app, os.environ["SLACK_APP_TOKEN"])
+#     handler.start()
+
+# threading.Thread(target=start_socket, daemon=True).start()
+
+# # API FastAPI para manter o serviço no ar
+# app = FastAPI()
+
+# @app.get("/")
+# def status():
+#     return {"status": "Slackbot rodando com sucesso"}
+import os
+import requests
+from urllib.parse import quote
+
+# Função para baixar documentos do GitHub
+def baixar_documentos():
+    base_url = "https://raw.githubusercontent.com/antunesfelipe/checkmob-copiloto-ia/main/documentos/"
+    arquivos = [
+        "A.5.1.1 Política de segurança da informação (vigente - 6_8_24).docx",
+        "CP07 - Information Classification Policy.docx",
+        "Política de Segurança de Servidores.docx"
+    ]
+    
+    os.makedirs("docs", exist_ok=True)
+    
+    for nome in arquivos:
+        url = base_url + quote(nome)
+        caminho_local = os.path.join("docs", nome.replace(" ", "_"))
+        
+        print(f"Baixando {url}...")
+        response = requests.get(url)
+        if response.status_code == 200:
+            with open(caminho_local, "wb") as f:
+                f.write(response.content)
+            print(f"✅ Baixado: {caminho_local}")
+        else:
+            print(f"❌ Erro ao baixar: {url}")
+
+# Baixar documentos ao iniciar o app
+baixar_documentos()
+
+
 from fastapi import FastAPI
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt import App
-import os
 import threading
 
 # Inicializa o app do Slack
