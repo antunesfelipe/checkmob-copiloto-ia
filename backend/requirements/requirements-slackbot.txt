@@ -15,3 +15,5 @@ docx2txt
 
 # Embeddings locais (sem OpenAI)
 sentence-transformers
+llama-index-embeddings-huggingface
+
