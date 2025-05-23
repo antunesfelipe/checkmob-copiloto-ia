@@ -29,5 +29,5 @@ fastapi
 llama-index-core
 llama-index-cli
 llama-index-embeddings-huggingface
-sentence-transformers
+#sentence-transformers
 
