@@ -17,12 +17,17 @@
 #sentence-transformers
 #llama-index-embeddings-huggingface
 
+# Slackbot
 slack-bolt==1.18.0
 slack-sdk
-fastapi
+python-dotenv==1.0.0
+requests==2.32.2
 uvicorn
-llama-index
+fastapi
+
+# LlamaIndex para usar índice existente (sem leitura de documentos)
+llama-index-core
+llama-index-cli
 llama-index-embeddings-huggingface
 sentence-transformers
-
 
