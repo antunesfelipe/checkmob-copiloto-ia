@@ -1,19 +1,28 @@
 # Slackbot
-slack-bolt==1.18.0
-slack-sdk
-python-dotenv==1.0.0
-requests==2.32.2
-uvicorn
-fastapi
+#slack-bolt==1.18.0
+#slack-sdk
+#python-dotenv==1.0.0
+#requests==2.32.2
+#uvicorn
+#fastapi
 
 # LlamaIndex e processamento de documentos
-llama-index[huggingface]
-unstructured
-python-docx
-pdfplumber
-docx2txt
+#llama-index[huggingface]
+#unstructured
+#python-docx
+#pdfplumber
+#docx2txt
 
 # Embeddings locais (sem OpenAI)
-sentence-transformers
+#sentence-transformers
+#llama-index-embeddings-huggingface
+
+slack-bolt==1.18.0
+slack-sdk
+fastapi
+uvicorn
+llama-index
 llama-index-embeddings-huggingface
+sentence-transformers
+
 
