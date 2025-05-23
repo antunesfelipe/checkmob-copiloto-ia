@@ -1,0 +1,12 @@
+# Só o necessário pro Slackbot funcionar com o índice pronto
+slack-bolt==1.18.0
+slack-sdk
+python-dotenv==1.0.0
+requests==2.32.2
+uvicorn
+fastapi
+
+# Leitura do índice (sem geração)
+llama-index-core
+llama-index-cli
+llama-index-embeddings-huggingface
